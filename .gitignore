@@ -1,0 +1,10 @@
+.vagrant/
+.DS_Store
+glide.lock
+frontend/frontend
+backend/backend
+simple/simple
+frontend/vendor/
+backend/vendor/
+simple/vendor/
+.build/

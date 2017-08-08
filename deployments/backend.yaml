@@ -1,0 +1,28 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: "dvonthenen/backend:latest"
+          imagePullPolicy: Always
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: LISTEN_IP
+              value: "0.0.0.0"
+            - name: LISTEN_PORT
+              value: "80"
+            - name: ZIPKIN_URI
+              value: "http://jaeger-collector.kube-system.svc.cluster.local:14268/api/traces?format=zipkin.thrift"

@@ -1,0 +1,40 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: prometheus
+  labels:
+    k8s-app: prometheus
+    version: v1.7.1
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        k8s-app: prometheus
+        version: v1.7.1
+    spec:
+      containers:
+        - name: prometheus
+          image: "prom/prometheus:v1.7.1"
+          args:
+            - "-config.file=/etc/prometheus/config.yaml"
+            - "-storage.local.path=/var/lib/prometheus"
+            - "-web.listen-address=0.0.0.0:9090"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: test-data
+              mountPath: /var/lib/prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus
+        - name: test-data
+          scaleIO:
+            gateway: https://10.138.0.6:443/api
+            system: scaleio
+            volumeName: prometheus
+            secretRef:
+              name: sio-secret

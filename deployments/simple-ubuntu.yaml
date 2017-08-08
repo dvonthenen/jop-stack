@@ -1,0 +1,16 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: simple-ubuntu
+  labels:
+    app: simple-ubuntu
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: simple-ubuntu
+    spec:
+      containers:
+        - name: simple-ubuntu
+          image: "dvonthenen/simple:v1-ubuntu"

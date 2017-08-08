@@ -1,0 +1,14 @@
+package: github.com/dvonthenen/jop-stack/backend
+import:
+- package: github.com/opentracing/opentracing-go
+  ref:     v1.0.2
+  vcs:     git
+- package: github.com/openzipkin/zipkin-go-opentracing
+  ref:     v0.3.0
+  vcs:     git
+- package: github.com/prometheus/client_golang
+  ref:     v0.8.0
+  vcs:     git
+- package: github.com/Sirupsen/logrus
+  ref:     v0.10.0
+  vcs:     git
