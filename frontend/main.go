@@ -19,8 +19,11 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/opentracing/opentracing-go"
-	zipkin "github.com/openzipkin/zipkin-go-opentracing"
+	opentracing "github.com/opentracing/opentracing-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
+	"github.com/uber/jaeger-lib/metrics"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -30,7 +33,6 @@ var (
 	listenPort   string
 	advertisedIP string
 	httpAddr     string
-	serviceAddr  string
 	backendURL   string
 	zipkinURL    string
 	tracer       opentracing.Tracer
@@ -39,7 +41,7 @@ var (
 const (
 	defaultListenPort = "80"
 	defaultListenIP   = "0.0.0.0"
-	defaultZipkinURL  = "http://jaeger-collector:9411/api/v1/spans"
+	//defaultJaegerURL  = "http://jaeger-collector.kube-system.svc.cluster.local:14268/api/traces?format=jaeger.thrift"
 	defaultBackendURL = "http://backend:80"
 )
 
@@ -71,36 +73,36 @@ func env(key, defaultValue string) (value string) {
 func main() {
 	var err error
 
-	advertisedIP = env("POD_IP", "127.0.0.1")
+	//advertisedIP = env("POD_IP", "127.0.0.1")
 	listenIP = env("LISTEN_IP", defaultListenIP)
 	listenPort = env("LISTEN_PORT", defaultListenPort)
 	backendURL = env("BACKEND_URI", defaultBackendURL)
-	zipkinURL = env("ZIPKIN_URI", defaultListenPort)
+	//tracingURI = env("TRACING_URI", defaultJaegerURL)
 
-	log.Info("advertisedIP:", advertisedIP)
+	//log.Info("advertisedIP:", advertisedIP)
 	log.Info("listenIP:", listenIP)
 	log.Info("listenPort:", listenPort)
 	log.Info("backendURL:", backendURL)
-	log.Info("zipkinURL:", zipkinURL)
+	//log.Info("tracingURI:", tracingURI)
 
 	httpAddr := net.JoinHostPort(listenIP, listenPort)
-	serviceAddr := net.JoinHostPort(advertisedIP, listenPort)
 
-	collector, err := zipkin.NewHTTPCollector(zipkinURL)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Recommended configuration for production.
+	cfg := jaegercfg.Configuration{}
 
-	recorder := zipkin.NewRecorder(collector, true, serviceAddr, "frontend")
-	tracer, err = zipkin.NewTracer(
-		recorder,
-		zipkin.ClientServerSameSpan(true),
-		zipkin.TraceID128Bit(true),
+	jLogger := jaegerlog.StdLogger
+	jMetricsFactory := metrics.NullFactory
+
+	closer, err := cfg.InitGlobalTracer(
+		"serviceName",
+		jaegercfg.Logger(jLogger),
+		jaegercfg.Metrics(jMetricsFactory),
 	)
 	if err != nil {
-		log.Fatal("unable to create Zipkin tracer:", err)
+		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
+		return
 	}
-	opentracing.InitGlobalTracer(tracer)
+	defer closer.Close()
 
 	http.HandleFunc("/", handler)
 	http.Handle("/metrics", promhttp.Handler())

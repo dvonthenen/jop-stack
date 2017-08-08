@@ -24,3 +24,5 @@ spec:
               value: "0.0.0.0"
             - name: LISTEN_PORT
               value: "80"
+            - name: ZIPKIN_URI
+              value: "http://jaeger-collector.kube-system.svc.cluster.local:9411/api/v1/spans"

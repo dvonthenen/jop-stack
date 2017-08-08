@@ -19,12 +19,8 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
-	jaegerlog "github.com/uber/jaeger-client-go/log"
-	"github.com/uber/jaeger-lib/metrics"
-
+	"github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -34,6 +30,8 @@ var (
 	listenPort   string
 	advertisedIP string
 	httpAddr     string
+	serviceAddr  string
+	backendURL   string
 	zipkinURL    string
 	tracer       opentracing.Tracer
 )
@@ -41,14 +39,15 @@ var (
 const (
 	defaultListenPort = "80"
 	defaultListenIP   = "0.0.0.0"
-	//defaultJaegerURL  = "http://jaeger-collector.kube-system.svc.cluster.local:14268/api/traces?format=jaeger.thrift"
+	defaultZipkinURL  = "http://jaeger-collector:9411/api/v1/spans"
+	defaultBackendURL = "http://backend:80"
 )
 
 var (
 	httpRequestsCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "cloud_native_app",
-			Subsystem: "backend",
+			Subsystem: "frontend",
 			Name:      "http_requests_total",
 			Help:      "Number of HTTP requests",
 		},
@@ -72,34 +71,36 @@ func env(key, defaultValue string) (value string) {
 func main() {
 	var err error
 
-	//advertisedIP = env("POD_IP", "127.0.0.1")
+	advertisedIP = env("POD_IP", "127.0.0.1")
 	listenIP = env("LISTEN_IP", defaultListenIP)
 	listenPort = env("LISTEN_PORT", defaultListenPort)
-	//tracingURI = env("TRACING_URI", defaultJaegerURL)
+	backendURL = env("BACKEND_URI", defaultBackendURL)
+	zipkinURL = env("ZIPKIN_URI", defaultListenPort)
 
-	//log.Info("advertisedIP:", advertisedIP)
+	log.Info("advertisedIP:", advertisedIP)
 	log.Info("listenIP:", listenIP)
 	log.Info("listenPort:", listenPort)
-	//log.Info("tracingURI:", tracingURI)
+	log.Info("backendURL:", backendURL)
+	log.Info("zipkinURL:", zipkinURL)
 
 	httpAddr := net.JoinHostPort(listenIP, listenPort)
+	serviceAddr := net.JoinHostPort(advertisedIP, listenPort)
 
-	// Recommended configuration for production.
-	cfg := jaegercfg.Configuration{}
+	collector, err := zipkin.NewHTTPCollector(zipkinURL)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	jLogger := jaegerlog.StdLogger
-	jMetricsFactory := metrics.NullFactory
-
-	closer, err := cfg.InitGlobalTracer(
-		"serviceName",
-		jaegercfg.Logger(jLogger),
-		jaegercfg.Metrics(jMetricsFactory),
+	recorder := zipkin.NewRecorder(collector, true, serviceAddr, "frontend")
+	tracer, err = zipkin.NewTracer(
+		recorder,
+		zipkin.ClientServerSameSpan(true),
+		zipkin.TraceID128Bit(true),
 	)
 	if err != nil {
-		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
-		return
+		log.Fatal("unable to create Zipkin tracer:", err)
 	}
-	defer closer.Close()
+	opentracing.InitGlobalTracer(tracer)
 
 	http.HandleFunc("/", handler)
 	http.Handle("/metrics", promhttp.Handler())
@@ -107,38 +108,26 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	var span opentracing.Span
-
-	log.Info("Extract")
-	spanContext, err := opentracing.GlobalTracer().Extract(
-		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(r.Header),
-	)
-
-	if err != nil {
-		log.Error("error extracting opentracing headers:", err)
-		httpRequestsCounter.WithLabelValues(r.Method, "500").Inc()
-		http.Error(w, "service unavailable", 500)
-		return
-	}
-
 	log.Info("StartSpan")
-	span = opentracing.StartSpan("backend", ext.RPCServerOption(spanContext))
+	span := opentracing.StartSpan("frontend")
+	span.SetTag("service", "frontend")
 	defer span.Finish()
 
 	log.Info("NewRequest")
-	httpRequest, err := http.NewRequest(http.MethodGet, "http://www.google.com", nil)
+	httpRequest, err := http.NewRequest(http.MethodGet, backendURL, nil)
 	if err != nil {
-		log.Error("error creating new HTTP request:", err)
+		log.Error("error creating new backend HTTP request:", err)
 		httpRequestsCounter.WithLabelValues(r.Method, "500").Inc()
 		http.Error(w, "service unavailable", 500)
 		return
 	}
 
 	log.Info("StartSpan")
-	childSpan := opentracing.StartSpan(
-		"get google.com",
-		opentracing.ChildOf(span.Context()),
+	childSpan := opentracing.StartSpan("backend", opentracing.ChildOf(span.Context()))
+	tracer.Inject(
+		childSpan.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(httpRequest.Header),
 	)
 	defer childSpan.Finish()
 
@@ -161,6 +150,5 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, string(byHTTP))
 
-	log.Info("WithLabelValues")
 	httpRequestsCounter.WithLabelValues(r.Method, "200").Inc()
 }
