@@ -2,7 +2,9 @@
 .DS_Store
 glide.lock
 frontend/frontend
+frontend-zipkin/frontend-zipkin
 backend/backend
+backend-zipkin/backend-zipkin
 simple/simple
 frontend/vendor/
 backend/vendor/

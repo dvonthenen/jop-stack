@@ -6,10 +6,16 @@ backend:
 docker build -t dvonthenen/jop-backend .
 docker push dvonthenen/jop-backend:latest
 
+docker build -t dvonthenen/jop-backend-zipkin .
+docker push dvonthenen/jop-backend-zipkin:latest
+
 frontend:
 ./build.sh
 docker build -t dvonthenen/jop-frontend .
 docker push dvonthenen/jop-frontend:latest
+
+docker build -t dvonthenen/jop-frontend-zipkin .
+docker push dvonthenen/jop-frontend-zipkin:latest
 
 
 ## ScaleIO Clean Up
