@@ -13,6 +13,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -20,28 +21,22 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	opentracing "github.com/opentracing/opentracing-go"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
-	jaegerlog "github.com/uber/jaeger-client-go/log"
-	"github.com/uber/jaeger-lib/metrics"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	jaeger "github.com/uber/jaeger-client-go"
 )
 
 var (
-	listenIP     string
-	listenPort   string
-	advertisedIP string
-	httpAddr     string
-	backendURL   string
-	zipkinURL    string
-	tracer       opentracing.Tracer
+	listenIP   string
+	listenPort string
+	httpAddr   string
+	backendURL string
+	tracer     opentracing.Tracer
 )
 
 const (
 	defaultListenPort = "80"
 	defaultListenIP   = "0.0.0.0"
-	//defaultJaegerURL  = "http://jaeger-collector.kube-system.svc.cluster.local:14268/api/traces?format=jaeger.thrift"
 	defaultBackendURL = "http://backend:80"
 )
 
@@ -73,36 +68,35 @@ func env(key, defaultValue string) (value string) {
 func main() {
 	var err error
 
-	//advertisedIP = env("POD_IP", "127.0.0.1")
 	listenIP = env("LISTEN_IP", defaultListenIP)
 	listenPort = env("LISTEN_PORT", defaultListenPort)
 	backendURL = env("BACKEND_URI", defaultBackendURL)
-	//tracingURI = env("TRACING_URI", defaultJaegerURL)
 
-	//log.Info("advertisedIP:", advertisedIP)
 	log.Info("listenIP:", listenIP)
 	log.Info("listenPort:", listenPort)
 	log.Info("backendURL:", backendURL)
-	//log.Info("tracingURI:", tracingURI)
 
 	httpAddr := net.JoinHostPort(listenIP, listenPort)
 
-	// Recommended configuration for production.
-	cfg := jaegercfg.Configuration{}
-
-	jLogger := jaegerlog.StdLogger
-	jMetricsFactory := metrics.NullFactory
-
-	closer, err := cfg.InitGlobalTracer(
-		"serviceName",
-		jaegercfg.Logger(jLogger),
-		jaegercfg.Metrics(jMetricsFactory),
-	)
+	// Jaeger tracer can be initialized with a transport that will
+	// report tracing Spans to a Zipkin backend
+	transport, err := jaeger.NewUDPTransport("", 0)
 	if err != nil {
-		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
-		return
+		log.Fatal("unable to create Zipkin tracer:", err)
 	}
+
+	// create Jaeger tracer
+	var closer io.Closer
+	tracer, closer = jaeger.NewTracer(
+		"frontend",
+		jaeger.NewConstSampler(true), // sample all traces
+		jaeger.NewRemoteReporter(transport),
+	)
+	// Close the tracer to guarantee that all spans that could
+	// be still buffered in memory are sent to the tracing backend
 	defer closer.Close()
+
+	opentracing.InitGlobalTracer(tracer)
 
 	http.HandleFunc("/", handler)
 	http.Handle("/metrics", promhttp.Handler())
@@ -125,7 +119,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("StartSpan")
-	childSpan := opentracing.StartSpan("backend", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("frontend", opentracing.ChildOf(span.Context()))
 	tracer.Inject(
 		childSpan.Context(),
 		opentracing.HTTPHeaders,
