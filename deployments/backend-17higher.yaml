@@ -1,29 +1,29 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: frontend
+  name: backend
   labels:
-    app: frontend
+    app: backend
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: frontend
+        app: backend
     spec:
       containers:
-        - name: frontend
-          image: "dvonthenen/jop-frontend:latest"
+        - name: backend
+          image: "dvonthenen/jop-backend:latest"
           imagePullPolicy: Always
           env:
             - name: HOST_IP
-              value: "jaeger-agent.kube-system.svc.cluster.local"
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            - name: BACKEND_URI
-              value: "http://backend:80"
             - name: LISTEN_IP
               value: "0.0.0.0"
             - name: LISTEN_PORT

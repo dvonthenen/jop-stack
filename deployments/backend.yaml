@@ -16,6 +16,8 @@ spec:
           image: "dvonthenen/jop-backend:latest"
           imagePullPolicy: Always
           env:
+            - name: HOST_IP
+              value: "jaeger-agent.kube-system.svc.cluster.local"
             - name: POD_IP
               valueFrom:
                 fieldRef:
