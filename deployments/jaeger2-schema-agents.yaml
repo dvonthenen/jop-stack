@@ -32,7 +32,7 @@ items:
       spec:
         containers:
         - name: jaeger-cassandra-schema
-          image: jaegertracing/jaeger-cassandra-schema:0.5
+          image: jaegertracing/jaeger-cassandra-schema:0.6
           env:
             - name: MODE
               value: "prod"
@@ -56,7 +56,7 @@ items:
       spec:
         containers:
         - name: agent-instance
-          image: jaegertracing/jaeger-agent:0.5
+          image: jaegertracing/jaeger-agent:0.6
           command:
           - "/go/bin/agent-linux"
           - "--collector.host-port=jaeger-collector:14267"

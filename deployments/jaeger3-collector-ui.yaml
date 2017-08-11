@@ -35,7 +35,7 @@ items:
         namespace: kube-system
       spec:
         containers:
-        - image: jaegertracing/jaeger-collector:0.5
+        - image: jaegertracing/jaeger-collector:0.6
           name: jaeger-collector
           ports:
           - containerPort: 14267
@@ -48,6 +48,7 @@ items:
           - "/go/bin/collector-linux"
           - "--cassandra.servers=cassandra"
           - "--cassandra.keyspace=jaeger_v1_dc1"
+          - "--collector.zipkin.http-port=9411"
         dnsPolicy: ClusterFirst
         restartPolicy: Always
 - apiVersion: extensions/v1beta1
@@ -70,7 +71,7 @@ items:
         namespace: kube-system
       spec:
         containers:
-        - image: jaegertracing/jaeger-query:0.5
+        - image: jaegertracing/jaeger-query:0.6
           name: jaeger-query
           ports:
           - containerPort: 16686

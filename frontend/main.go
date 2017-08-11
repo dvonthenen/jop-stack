@@ -13,7 +13,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -23,7 +22,15 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	jaeger "github.com/uber/jaeger-client-go"
+
+	/*
+		jaeger "github.com/uber/jaeger-client-go"
+		"github.com/uber/jaeger-client-go/zipkin"
+	*/
+	"github.com/uber/jaeger-client-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
+	"github.com/uber/jaeger-lib/metrics"
 )
 
 var (
@@ -31,7 +38,7 @@ var (
 	listenPort string
 	httpAddr   string
 	backendURL string
-	tracer     opentracing.Tracer
+	//tracer     opentracing.Tracer
 )
 
 const (
@@ -78,25 +85,64 @@ func main() {
 
 	httpAddr := net.JoinHostPort(listenIP, listenPort)
 
-	// Jaeger tracer can be initialized with a transport that will
-	// report tracing Spans to a Zipkin backend
-	transport, err := jaeger.NewUDPTransport("", 0)
-	if err != nil {
-		log.Fatal("unable to create Zipkin tracer:", err)
+	/*
+		// Jaeger tracer can be initialized with a transport that will
+		// report tracing Spans to a Zipkin backend
+		transport, err := jaeger.NewUDPTransport("localhost:6832", 0)
+		if err != nil {
+			log.Fatal("unable to create Zipkin tracer:", err)
+		}
+
+		// create Jaeger tracer
+		//var closer io.Closer
+		zipkinPropagator := zipkin.NewZipkinB3HTTPHeaderPropagator()
+		injector := jaeger.TracerOptions.Injector(opentracing.HTTPHeaders, zipkinPropagator)
+		extractor := jaeger.TracerOptions.Extractor(opentracing.HTTPHeaders, zipkinPropagator)
+
+		tracer, _ = jaeger.NewTracer(
+			"frontend",
+			jaeger.NewConstSampler(true), // sample all traces
+			jaeger.NewRemoteReporter(transport),
+			injector,
+			extractor,
+			jaeger.TracerOptions.ZipkinSharedRPCSpan(true),
+		)
+		// Close the tracer to guarantee that all spans that could
+		// be still buffered in memory are sent to the tracing backend
+		//defer closer.Close()
+
+		opentracing.InitGlobalTracer(tracer)
+	*/
+
+	// Sample configuration for testing. Use constant sampling to sample every trace
+	// and enable LogSpan to log every span via configured Logger.
+	cfg := jaegercfg.Configuration{
+		Sampler: &jaegercfg.SamplerConfig{
+			Type:  jaeger.SamplerTypeConst,
+			Param: 1,
+		},
+		Reporter: &jaegercfg.ReporterConfig{
+			LogSpans: true,
+		},
 	}
 
-	// create Jaeger tracer
-	var closer io.Closer
-	tracer, closer = jaeger.NewTracer(
-		"frontend",
-		jaeger.NewConstSampler(true), // sample all traces
-		jaeger.NewRemoteReporter(transport),
-	)
-	// Close the tracer to guarantee that all spans that could
-	// be still buffered in memory are sent to the tracing backend
-	defer closer.Close()
+	// Example logger and metrics factory. Use github.com/uber/jaeger-client-go/log
+	// and github.com/uber/jaeger-lib/metrics respectively to bind to real logging and metrics
+	// frameworks.
+	jLogger := jaegerlog.StdLogger
+	jMetricsFactory := metrics.NullFactory
 
-	opentracing.InitGlobalTracer(tracer)
+	// Initialize tracer with a logger and a metrics factory
+	closer, err := cfg.InitGlobalTracer(
+		"serviceName",
+		jaegercfg.Logger(jLogger),
+		jaegercfg.Metrics(jMetricsFactory),
+	)
+	if err != nil {
+		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
+		return
+	}
+	defer closer.Close()
 
 	http.HandleFunc("/", handler)
 	http.Handle("/metrics", promhttp.Handler())
@@ -120,7 +166,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("StartSpan")
 	childSpan := opentracing.StartSpan("frontend", opentracing.ChildOf(span.Context()))
-	tracer.Inject(
+	opentracing.GlobalTracer().Inject(
 		childSpan.Context(),
 		opentracing.HTTPHeaders,
 		opentracing.HTTPHeadersCarrier(httpRequest.Header),

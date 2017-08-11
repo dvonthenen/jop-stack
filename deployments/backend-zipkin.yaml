@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: "dvonthenen/backend:latest"
+          image: "dvonthenen/jop-backend-zipkin:latest"
           imagePullPolicy: Always
           env:
             - name: POD_IP
@@ -25,4 +25,4 @@ spec:
             - name: LISTEN_PORT
               value: "80"
             - name: ZIPKIN_URI
-              value: "http://jaeger-collector.kube-system.svc.cluster.local:14268/api/traces?format=zipkin.thrift"
+              value: "http://jaeger-collector.kube-system.svc.cluster.local:9411/api/v1/spans"
