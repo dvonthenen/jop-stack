@@ -17,9 +17,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
+              value: "myrel-jaeger-agent.kube-system.svc.cluster.local"
             - name: POD_IP
               valueFrom:
                 fieldRef:

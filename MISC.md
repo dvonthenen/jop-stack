@@ -24,7 +24,21 @@ scli --query_all_volumes
 scli --unmap_volume_from_sdc --all_sdc --volume_name XXXXXX --i_am_sure
 scli --remove_volume --volume_name XXXX
 
-scli --mdm_ip 10.138.0.6 --add_volume --size_gb 32 --volume_name prometheus --protection_domain_name default --storage_pool_name default
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 16 --volume_name prometheus --protection_domain_name default --storage_pool_name default
+
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 8 --volume_name statichttpserver1 --protection_domain_name default --storage_pool_name default
+
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 8 --volume_name statichttpserver2 --protection_domain_name default --storage_pool_name default
+
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 8 --volume_name statichttpserver3 --protection_domain_name default --storage_pool_name default
+
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 8 --volume_name statichttpserver4 --protection_domain_name default --storage_pool_name default
+
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 8 --volume_name statichttpserver5 --protection_domain_name default --storage_pool_name default
+
+scli --mdm_ip 10.138.0.7 --add_volume --size_gb 8 --volume_name statichttpserver6 --protection_domain_name default --storage_pool_name default
+
+scli --remove_volume --volume_name statichttpserver5
 
 
 ## Random Debugging Stuff
