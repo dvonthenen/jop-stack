@@ -18,13 +18,14 @@ import (
 	"net/http"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/uber/jaeger-client-go"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	jaeger "github.com/uber/jaeger-client-go"
 )
 
 var (
@@ -82,10 +83,10 @@ func main() {
 	httpAddr := net.JoinHostPort(listenIP, listenPort)
 
 	// Jaeger tracer can be initialized with a transport that will
-	// report tracing Spans to a Zipkin backend
+	// report tracing Spans to Jaeger
 	transport, err := jaeger.NewUDPTransport(jaegerAddr, 0)
 	if err != nil {
-		log.Fatal("unable to create Zipkin tracer:", err)
+		log.Fatal("unable to create Jaeger tracer:", err)
 	}
 
 	tracer, _ := jaeger.NewTracer(

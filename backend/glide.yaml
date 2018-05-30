@@ -4,18 +4,21 @@ import:
   ref:     v1.0.2
   vcs:     git
 - package: github.com/uber/jaeger-client-go
-  ref:     v2.8.0
+  ref:     v2.14.0
   vcs:     git
-- package: github.com/apache/thrift
-  version: ">= 0.9.3, < 0.11"
-  subpackages:
-  - lib/go/thrift
-- package: github.com/openzipkin/zipkin-go-opentracing
-  ref:     v0.2.4
+- package: github.com/uber/jaeger-client-go/metrics
+  ref:     v2.14.0
   vcs:     git
+#- package: github.com/apache/thrift
+#  version: ">= 0.9.3, < 0.11"
+#  subpackages:
+#  - lib/go/thrift
+#- package: github.com/openzipkin/zipkin-go-opentracing
+#  ref:     v0.2.4
+#  vcs:     git
 - package: github.com/prometheus/client_golang
   ref:     v0.8.0
   vcs:     git
-- package: github.com/Sirupsen/logrus
-  ref:     v0.10.0
+- package: github.com/sirupsen/logrus
+  ref:     v1.0.5
   vcs:     git

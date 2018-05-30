@@ -18,12 +18,13 @@ import (
 	"net/http"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
-	opentracing "github.com/opentracing/opentracing-go"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/uber/jaeger-client-go"
+	opentracing "github.com/opentracing/opentracing-go"
+	jaeger "github.com/uber/jaeger-client-go"
 )
 
 var (
