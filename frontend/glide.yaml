@@ -3,10 +3,10 @@ import:
 - package: github.com/opentracing/opentracing-go
   ref:     v1.0.2
   vcs:     git
-- package: github.com/uber/jaeger-client-go
+- package: github.com/jaegertracing/jaeger-client-go
   ref:     v2.14.0
   vcs:     git
-- package: github.com/uber/jaeger-client-go/metrics
+- package: github.com/jaegertracing/jaeger-client-go/metrics
   ref:     v2.14.0
   vcs:     git
 #- package: github.com/apache/thrift
